@@ -1,0 +1,452 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DataSourcesService = void 0;
+const common_1 = require("@nestjs/common");
+const prisma_service_1 = require("../prisma/prisma.service");
+const system_service_1 = require("../system/system.service");
+let DataSourcesService = class DataSourcesService {
+    prisma;
+    systemService;
+    constructor(prisma, systemService) {
+        this.prisma = prisma;
+        this.systemService = systemService;
+    }
+    getTemplates() {
+        return {
+            testCaseRepository: {
+                endpoint: '/api/v1/data-sources/test-case-repositories',
+                method: 'POST',
+                payload: {
+                    projectName: 'AI Test Metrics Dashboard',
+                    moduleName: 'Admin Panel',
+                    requirements: [
+                        {
+                            code: 'REQ-006',
+                            title: 'Manage user roles',
+                            description: 'Admin can assign roles to users',
+                            priority: 'high',
+                            testCaseCodes: ['TC-006'],
+                        },
+                    ],
+                    testCases: [
+                        {
+                            code: 'TC-006',
+                            title: 'Assign role to a user',
+                            description: 'Verify role assignment succeeds',
+                            testType: 'functional',
+                            priority: 'high',
+                        },
+                    ],
+                },
+            },
+            executionReport: {
+                endpoint: '/api/v1/data-sources/execution-reports',
+                method: 'POST',
+                payload: {
+                    projectName: 'AI Test Metrics Dashboard',
+                    runName: 'Sprint 3 Regression',
+                    environment: 'staging',
+                    executedBy: 'qa-team',
+                    results: [
+                        {
+                            testCaseCode: 'TC-006',
+                            status: 'passed',
+                            executionTimeSeconds: 12,
+                            actualResult: 'Role updated successfully',
+                        },
+                    ],
+                },
+            },
+            bugTracking: {
+                endpoint: '/api/v1/data-sources/bug-tracking',
+                method: 'POST',
+                payload: {
+                    projectName: 'AI Test Metrics Dashboard',
+                    tracker: 'jira',
+                    issues: [
+                        {
+                            bugCode: 'BUG-004',
+                            moduleName: 'Admin Panel',
+                            testCaseCode: 'TC-006',
+                            title: 'Role assignment fails for invited users',
+                            description: 'Jira issue imported from bug tracker',
+                            severity: 'high',
+                            priority: 'high',
+                            source: 'testing',
+                            status: 'open',
+                        },
+                    ],
+                },
+            },
+            codeRepository: {
+                endpoint: '/api/v1/data-sources/code-repository',
+                method: 'POST',
+                payload: {
+                    projectName: 'AI Test Metrics Dashboard',
+                    repository: 'measurement-backend',
+                    coverage: [
+                        {
+                            moduleName: 'Admin Panel',
+                            coveragePercent: 77,
+                            reportDate: '2026-04-13',
+                        },
+                    ],
+                },
+            },
+            aiRefresh: {
+                endpoint: '/api/v1/analysis/refresh',
+                method: 'POST',
+                payload: {
+                    projectName: 'AI Test Metrics Dashboard',
+                },
+            },
+        };
+    }
+    async importTestCases(payload) {
+        const result = await this.importTestCaseRepository(payload);
+        await this.systemService.recordHistory('input', `Imported test cases for ${result.moduleName}`);
+        return result;
+    }
+    async importTestCaseRepository(payload) {
+        const projectName = this.getString(payload.projectName) ?? 'Imported Project';
+        const moduleName = this.getString(payload.moduleName) ?? 'Imported Module';
+        const project = await this.ensureProject(projectName);
+        const module = await this.ensureModule(project.id, moduleName, this.getString(payload.moduleDescription));
+        const testCases = this.getArray(payload.testCases);
+        const requirements = this.getArray(payload.requirements);
+        let createdTestCases = 0;
+        let createdRequirements = 0;
+        for (const testCasePayload of testCases) {
+            const code = this.getString(testCasePayload.code);
+            const title = this.getString(testCasePayload.title);
+            if (!code || !title) {
+                continue;
+            }
+            const existing = await this.prisma.test_cases.findUnique({
+                where: { code },
+                select: { id: true },
+            });
+            if (!existing) {
+                createdTestCases += 1;
+            }
+            await this.prisma.test_cases.upsert({
+                where: { code },
+                update: {
+                    title,
+                    description: this.getString(testCasePayload.description),
+                    test_type: this.getString(testCasePayload.testType) ?? 'functional',
+                    priority: this.getString(testCasePayload.priority) ?? 'medium',
+                    module_id: module.id,
+                },
+                create: {
+                    code,
+                    title,
+                    description: this.getString(testCasePayload.description),
+                    test_type: this.getString(testCasePayload.testType) ?? 'functional',
+                    priority: this.getString(testCasePayload.priority) ?? 'medium',
+                    module_id: module.id,
+                },
+            });
+        }
+        for (const requirementPayload of requirements) {
+            const code = this.getString(requirementPayload.code);
+            const title = this.getString(requirementPayload.title);
+            if (!code || !title) {
+                continue;
+            }
+            const existing = await this.prisma.requirements.findUnique({
+                where: { code },
+                select: { id: true },
+            });
+            if (!existing) {
+                createdRequirements += 1;
+            }
+            const requirement = await this.prisma.requirements.upsert({
+                where: { code },
+                update: {
+                    title,
+                    description: this.getString(requirementPayload.description),
+                    priority: this.getString(requirementPayload.priority) ?? 'medium',
+                    project_id: project.id,
+                    module_id: module.id,
+                },
+                create: {
+                    code,
+                    title,
+                    description: this.getString(requirementPayload.description),
+                    priority: this.getString(requirementPayload.priority) ?? 'medium',
+                    project_id: project.id,
+                    module_id: module.id,
+                },
+            });
+            const linkedCodes = this.getStringArray(requirementPayload.testCaseCodes);
+            for (const linkedCode of linkedCodes) {
+                const linkedTestCase = await this.prisma.test_cases.findUnique({
+                    where: { code: linkedCode },
+                    select: { id: true },
+                });
+                if (!linkedTestCase) {
+                    continue;
+                }
+                const existingLink = await this.prisma.requirement_test_cases.findFirst({
+                    where: {
+                        requirement_id: requirement.id,
+                        test_case_id: linkedTestCase.id,
+                    },
+                    select: { id: true },
+                });
+                if (!existingLink) {
+                    await this.prisma.requirement_test_cases.create({
+                        data: {
+                            requirement_id: requirement.id,
+                            test_case_id: linkedTestCase.id,
+                        },
+                    });
+                }
+            }
+        }
+        return {
+            source: 'test-case-repository',
+            projectName,
+            moduleName,
+            createdTestCases,
+            createdRequirements,
+            importedAt: new Date().toISOString(),
+        };
+    }
+    async importExecutionReport(payload) {
+        const projectName = this.getString(payload.projectName) ?? 'Imported Project';
+        const project = await this.ensureProject(projectName);
+        const runName = this.getString(payload.runName) ?? `Imported Run ${Date.now()}`;
+        const results = this.getArray(payload.results);
+        const testRun = await this.prisma.test_runs.create({
+            data: {
+                project_id: project.id,
+                run_name: runName,
+                environment: this.getString(payload.environment) ?? 'staging',
+                executed_by: this.getString(payload.executedBy) ?? 'import',
+                executed_at: this.getDate(payload.executedAt) ?? new Date(),
+            },
+        });
+        let importedResults = 0;
+        for (const resultPayload of results) {
+            const testCaseCode = this.getString(resultPayload.testCaseCode);
+            if (!testCaseCode) {
+                continue;
+            }
+            const testCase = await this.prisma.test_cases.findUnique({
+                where: { code: testCaseCode },
+                select: { id: true },
+            });
+            if (!testCase) {
+                continue;
+            }
+            await this.prisma.test_results.create({
+                data: {
+                    test_run_id: testRun.id,
+                    test_case_id: testCase.id,
+                    status: this.getString(resultPayload.status) ?? 'failed',
+                    execution_time_seconds: this.getNumber(resultPayload.executionTimeSeconds),
+                    actual_result: this.getString(resultPayload.actualResult),
+                },
+            });
+            importedResults += 1;
+        }
+        return {
+            source: 'execution-report',
+            runName,
+            importedResults,
+            importedAt: new Date().toISOString(),
+        };
+    }
+    async importTestExecution(payload) {
+        const result = await this.importExecutionReport(payload);
+        await this.systemService.recordHistory('input', `Imported execution report ${result.runName}`);
+        return result;
+    }
+    async importBugTracking(payload) {
+        const projectName = this.getString(payload.projectName) ?? 'Imported Project';
+        const project = await this.ensureProject(projectName);
+        const tracker = this.getString(payload.tracker) ?? 'manual';
+        const issues = this.getArray(payload.issues);
+        let upsertedIssues = 0;
+        for (const issuePayload of issues) {
+            const bugCode = this.getString(issuePayload.bugCode);
+            const moduleName = this.getString(issuePayload.moduleName);
+            const title = this.getString(issuePayload.title);
+            if (!bugCode || !moduleName || !title) {
+                continue;
+            }
+            const module = await this.ensureModule(project.id, moduleName);
+            const testCaseCode = this.getString(issuePayload.testCaseCode);
+            const linkedTestCase = testCaseCode
+                ? await this.prisma.test_cases.findUnique({
+                    where: { code: testCaseCode },
+                    select: { id: true },
+                })
+                : null;
+            await this.prisma.bugs.upsert({
+                where: { bug_code: bugCode },
+                update: {
+                    module_id: module.id,
+                    test_case_id: linkedTestCase?.id ?? null,
+                    title,
+                    description: this.getString(issuePayload.description) ??
+                        `Imported from ${tracker.toUpperCase()} issue tracker`,
+                    severity: this.getString(issuePayload.severity) ?? 'medium',
+                    priority: this.getString(issuePayload.priority) ?? 'medium',
+                    source: this.getString(issuePayload.source) ?? 'testing',
+                    status: this.getString(issuePayload.status) ?? 'open',
+                },
+                create: {
+                    module_id: module.id,
+                    test_case_id: linkedTestCase?.id ?? null,
+                    bug_code: bugCode,
+                    title,
+                    description: this.getString(issuePayload.description) ??
+                        `Imported from ${tracker.toUpperCase()} issue tracker`,
+                    severity: this.getString(issuePayload.severity) ?? 'medium',
+                    priority: this.getString(issuePayload.priority) ?? 'medium',
+                    source: this.getString(issuePayload.source) ?? 'testing',
+                    status: this.getString(issuePayload.status) ?? 'open',
+                },
+            });
+            upsertedIssues += 1;
+        }
+        return {
+            source: 'bug-tracking',
+            tracker,
+            upsertedIssues,
+            importedAt: new Date().toISOString(),
+        };
+    }
+    async syncBugData(payload) {
+        const result = await this.importBugTracking(payload);
+        await this.systemService.recordHistory('input', `Synced ${result.upsertedIssues} bug records from ${result.tracker}`);
+        return result;
+    }
+    async importCodeRepository(payload) {
+        const projectName = this.getString(payload.projectName) ?? 'Imported Project';
+        const project = await this.ensureProject(projectName);
+        const repository = this.getString(payload.repository) ?? 'repository';
+        const coverageRows = this.getArray(payload.coverage);
+        let importedCoverageRows = 0;
+        for (const coveragePayload of coverageRows) {
+            const moduleName = this.getString(coveragePayload.moduleName);
+            if (!moduleName) {
+                continue;
+            }
+            const module = await this.ensureModule(project.id, moduleName);
+            const coveragePercent = this.getNumber(coveragePayload.coveragePercent);
+            if (coveragePercent === null) {
+                continue;
+            }
+            await this.prisma.code_coverage.create({
+                data: {
+                    module_id: module.id,
+                    coverage_percent: coveragePercent,
+                    report_date: this.getDate(coveragePayload.reportDate) ?? new Date(),
+                },
+            });
+            importedCoverageRows += 1;
+        }
+        return {
+            source: 'code-repository',
+            repository,
+            importedCoverageRows,
+            importedAt: new Date().toISOString(),
+        };
+    }
+    async connectRepo(payload) {
+        const result = await this.importCodeRepository(payload);
+        await this.systemService.recordHistory('input', `Connected code repository ${result.repository}`);
+        return result;
+    }
+    async ensureProject(name) {
+        const existing = await this.prisma.projects.findFirst({
+            where: { name },
+            select: { id: true, name: true },
+        });
+        if (existing) {
+            return existing;
+        }
+        return this.prisma.projects.create({
+            data: {
+                name,
+                description: `Imported project ${name}`,
+            },
+            select: { id: true, name: true },
+        });
+    }
+    async ensureModule(projectId, name, description) {
+        const existing = await this.prisma.modules.findFirst({
+            where: { project_id: projectId, name },
+            select: { id: true, name: true },
+        });
+        if (existing) {
+            return existing;
+        }
+        return this.prisma.modules.create({
+            data: {
+                project_id: projectId,
+                name,
+                description: description ?? `Imported module ${name}`,
+            },
+            select: { id: true, name: true },
+        });
+    }
+    getString(value) {
+        return typeof value === 'string' && value.trim() ? value.trim() : null;
+    }
+    getNumber(value) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value;
+        }
+        if (typeof value === 'string' && value.trim()) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+    }
+    getDate(value) {
+        if (!value) {
+            return null;
+        }
+        if (value instanceof Date) {
+            return Number.isNaN(value.getTime()) ? null : value;
+        }
+        if (typeof value !== 'string' && typeof value !== 'number') {
+            return null;
+        }
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+    getArray(value) {
+        return Array.isArray(value)
+            ? value.filter((item) => !!item && typeof item === 'object')
+            : [];
+    }
+    getStringArray(value) {
+        return Array.isArray(value)
+            ? value
+                .map((item) => this.getString(item))
+                .filter((item) => Boolean(item))
+            : [];
+    }
+};
+exports.DataSourcesService = DataSourcesService;
+exports.DataSourcesService = DataSourcesService = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        system_service_1.SystemService])
+], DataSourcesService);
+//# sourceMappingURL=data-sources.service.js.map

@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model ai_analysis {
+  id                   Int       @id @default(autoincrement())
+  module_id            Int
+  risk_level           String    @db.VarChar(20)
+  risk_score           Decimal?  @db.Decimal(5, 2)
+  insufficient_testing Boolean?  @default(false)
+  suggested_test_cases String?
+  analysis_date        DateTime? @default(now()) @db.Timestamp(6)
+  modules              modules   @relation(fields: [module_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model bugs {
+  id           Int         @id @default(autoincrement())
+  module_id    Int
+  test_case_id Int?
+  bug_code     String      @unique @db.VarChar(50)
+  title        String      @db.VarChar(255)
+  description  String?
+  severity     String?     @db.VarChar(20)
+  priority     String?     @db.VarChar(20)
+  source       String      @db.VarChar(20)
+  status       String?     @default("open") @db.VarChar(20)
+  created_at   DateTime?   @default(now()) @db.Timestamp(6)
+  modules      modules     @relation(fields: [module_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  test_cases   test_cases? @relation(fields: [test_case_id], references: [id], onUpdate: NoAction)
+}
+
+model code_coverage {
+  id               Int       @id @default(autoincrement())
+  module_id        Int
+  coverage_percent Decimal   @db.Decimal(5, 2)
+  report_date      DateTime  @db.Date
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  modules          modules   @relation(fields: [module_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model modules {
+  id            Int             @id @default(autoincrement())
+  project_id    Int
+  name          String          @db.VarChar(255)
+  description   String?
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  ai_analysis   ai_analysis[]
+  bugs          bugs[]
+  code_coverage code_coverage[]
+  projects      projects        @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  requirements  requirements[]
+  test_cases    test_cases[]
+}
+
+model projects {
+  id           Int            @id @default(autoincrement())
+  name         String         @db.VarChar(255)
+  description  String?
+  created_at   DateTime?      @default(now()) @db.Timestamp(6)
+  modules      modules[]
+  requirements requirements[]
+  test_runs    test_runs[]
+}
+
+model requirement_test_cases {
+  id             Int          @id @default(autoincrement())
+  requirement_id Int
+  test_case_id   Int
+  requirements   requirements @relation(fields: [requirement_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  test_cases     test_cases   @relation(fields: [test_case_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([requirement_id, test_case_id])
+}
+
+model requirements {
+  id                     Int                      @id @default(autoincrement())
+  project_id             Int
+  module_id              Int?
+  code                   String                   @unique @db.VarChar(50)
+  title                  String                   @db.VarChar(255)
+  description            String?
+  priority               String?                  @db.VarChar(20)
+  created_at             DateTime?                @default(now()) @db.Timestamp(6)
+  requirement_test_cases requirement_test_cases[]
+  modules                modules?                 @relation(fields: [module_id], references: [id], onUpdate: NoAction)
+  projects               projects                 @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model test_cases {
+  id                     Int                      @id @default(autoincrement())
+  module_id              Int
+  code                   String                   @unique @db.VarChar(50)
+  title                  String                   @db.VarChar(255)
+  description            String?
+  test_type              String?                  @db.VarChar(50)
+  priority               String?                  @db.VarChar(20)
+  status                 String?                  @default("active") @db.VarChar(20)
+  created_at             DateTime?                @default(now()) @db.Timestamp(6)
+  bugs                   bugs[]
+  requirement_test_cases requirement_test_cases[]
+  modules                modules                  @relation(fields: [module_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  test_results           test_results[]
+}
+
+model test_results {
+  id                     Int        @id @default(autoincrement())
+  test_run_id            Int
+  test_case_id           Int
+  status                 String     @db.VarChar(20)
+  execution_time_seconds Int?
+  actual_result          String?
+  created_at             DateTime?  @default(now()) @db.Timestamp(6)
+  test_cases             test_cases @relation(fields: [test_case_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  test_runs              test_runs  @relation(fields: [test_run_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model test_runs {
+  id           Int            @id @default(autoincrement())
+  project_id   Int
+  run_name     String         @db.VarChar(255)
+  environment  String?        @db.VarChar(50)
+  executed_by  String?        @db.VarChar(100)
+  executed_at  DateTime?      @default(now()) @db.Timestamp(6)
+  test_results test_results[]
+  projects     projects       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique @db.VarChar(100)
+  password_hash String    @db.VarChar(255)
+  role          String    @default("viewer") @db.VarChar(30)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model activity_logs {
+  id         Int       @id @default(autoincrement())
+  action     String    @db.VarChar(50)
+  detail     String
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+}

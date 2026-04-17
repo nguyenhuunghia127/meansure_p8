@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>P8 AI Test Metrics Dashboard</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <span class="tag">P8 Software Quality Assessment</span>
+      <h1>AI-based Test Metrics Dashboard for Software Quality Assessment</h1>
+      <p class="muted">
+        This dashboard follows your brief directly: Input sources, Processing metrics,
+        AI component, and Output views for testing effectiveness, coverage, defect
+        trends, and risk areas.
+      </p>
+      <div class="hero-grid">
+        <article class="card">
+          <h3>Objective</h3>
+          <p class="muted section-gap">
+            Measure software testing effectiveness using live project data from test
+            repositories, execution reports, bug tracking, and code coverage with
+            AI-assisted analysis layered on top.
+          </p>
+          <div class="recommendations section-gap">
+            <div class="recommendation">
+              Input: test case repositories, test execution reports, bug tracking systems,
+              and code repository signals.
+            </div>
+            <div class="recommendation">
+              Processing: execution rate, pass/fail ratio, DDP, leakage, requirement
+              coverage, code coverage, and test case coverage.
+            </div>
+            <div class="recommendation">
+              AI: detect insufficient testing, predict risky modules, and suggest extra
+              test cases.
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Controls</h3>
+          <div class="form-grid section-gap">
+            <div class="field">
+              <label for="time-range">Time Range</label>
+              <select id="time-range">
+                <option value="all">All</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="module-name">Module</label>
+              <select id="module-name">
+                <option value="">All modules</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="auth-user">Username</label>
+              <input id="auth-user" value="admin" />
+            </div>
+          </div>
+          <div class="actions section-gap">
+            <button id="apply-filters">Apply Filters</button>
+            <button id="refresh-ai">Refresh AI Analysis</button>
+            <button id="reload-dashboard" class="alt">Reload Dashboard</button>
+          </div>
+          <div class="chips section-gap">
+            <span id="status" class="status">Ready</span>
+            <span class="chip">/api/v1/metrics/overview</span>
+          </div>
+          <p id="status-msg" class="muted section-gap-small">
+            Waiting to load live data from the NestJS API.
+          </p>
+        </article>
+      </div>
+      <article class="panel upload-panel">
+        <div class="section-head">
+          <div>
+            <h2>AI Test From File</h2>
+            <p class="muted">
+              Upload one text, JSON, CSV, log, or requirement file, then let the AI test
+              helper generate risks and suggested test cases.
+            </p>
+          </div>
+          <div class="chips">
+            <span class="chip">POST /api/v1/analysis/upload</span>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="ai-upload-file">Choose File</label>
+            <input id="ai-upload-file" type="file" />
+          </div>
+          <div class="field">
+            <label for="ai-upload-name">Scenario Name</label>
+            <input id="ai-upload-name" value="Uploaded file analysis" />
+          </div>
+          <div class="field">
+            <label for="ai-upload-hint">Analysis Hint</label>
+            <input
+              id="ai-upload-hint"
+              value="Find risks, edge cases, and suggested test cases"
+            />
+          </div>
+        </div>
+        <div class="actions section-gap">
+          <button id="run-upload-analysis">AI Test</button>
+        </div>
+        <div id="upload-analysis-preview" class="preview">
+          Upload a file and press AI Test to see the analysis result here.
+        </div>
+      </article>
+      <article class="panel upload-panel">
+        <div class="section-head">
+          <div>
+            <h2>Import CSV To Dashboard</h2>
+            <p class="muted">
+              Import structured source data into the dashboard database. This MVP supports
+              CSV now and is ready to extend to XLSX next.
+            </p>
+          </div>
+          <div class="chips">
+            <span class="chip">POST /api/v1/data-sources/import-file</span>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="import-type">Import Type</label>
+            <select id="import-type">
+              <option value="test-case-repository">Test Cases + Requirements</option>
+              <option value="execution-report">Execution Report</option>
+              <option value="bug-tracking">Bug Tracking</option>
+              <option value="code-repository">Code Coverage</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="import-project-name">Project Name</label>
+            <input id="import-project-name" value="AI Test Metrics Dashboard" />
+          </div>
+          <div class="field">
+            <label for="import-extra-name">Extra Name</label>
+            <input id="import-extra-name" value="Admin Panel" />
+          </div>
+        </div>
+        <div class="form-grid section-gap">
+          <div class="field">
+            <label for="import-file">CSV File</label>
+            <input id="import-file" type="file" accept=".csv,.xlsx" />
+          </div>
+          <div class="field">
+            <label>CSV Header Hint</label>
+            <input
+              id="import-header-hint"
+              value="Use headers that match the selected import type"
+              readonly
+            />
+          </div>
+          <div class="field">
+            <label>Example</label>
+            <input
+              id="import-example-hint"
+              value="testCaseCode,status,executionTimeSeconds"
+              readonly
+            />
+          </div>
+        </div>
+        <div class="actions section-gap">
+          <button id="run-data-import">Import CSV</button>
+        </div>
+        <div id="data-import-preview" class="preview">
+          Choose an import type, upload a CSV file, and import it into the dashboard data
+          store.
+        </div>
+      </article>
+    </section>
+    <section id="app" class="panel">
+      <div id="loading" class="loading">Loading dashboard data...</div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
