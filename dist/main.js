@@ -11,6 +11,7 @@ async function bootstrap() {
     app.setGlobalPrefix('api/v1', {
         exclude: [{ path: '', method: common_1.RequestMethod.GET }],
     });
+    app.enableCors();
     await app.listen(3000);
     console.log('Application is running on: http://localhost:3000');
 }

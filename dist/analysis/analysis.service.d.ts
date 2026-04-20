@@ -21,19 +21,20 @@ type UploadedAnalysisFile = {
 export declare class AnalysisService {
     private readonly prisma;
     private readonly systemService;
+    private readonly logger;
     constructor(prisma: PrismaService, systemService: SystemService);
     refreshAiAnalysis(projectName?: string): Promise<{
         refreshedAt: string;
         totalModules: number;
         analyses: {
-            analysisId: number;
-            riskLevel: string;
-            riskScore: number;
-            insufficientTesting: boolean;
-            suggestedTestCases: string[];
             moduleId: number;
             moduleName: string;
             projectName: string;
+            riskLevel: any;
+            riskScore: any;
+            insufficientTesting: boolean;
+            suggestedTestCases: string[];
+            analysisId: number;
         }[];
     }>;
     detectLowCoverageAreas(projectName?: string): Promise<{
@@ -83,7 +84,7 @@ export declare class AnalysisService {
         insufficientTesting: boolean;
     };
     private buildModuleSnapshots;
-    private computeAnalysis;
+    private computeFallbackAnalysis;
     private normalize;
     private buildUploadedFileSummary;
     private round;

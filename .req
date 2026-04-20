@@ -1,0 +1,54 @@
+## **P8. Bảng điều khiển số liệu kiểm thử dựa trên AI để đánh giá chất lượng phần mềm**
+
+### **Mục tiêu:**
+
+Phát triển một bảng điều khiển (dashboard) đo lường hiệu quả kiểm thử phần mềm bằng cách sử dụng các chỉ số kiểm thử và phân tích có sự hỗ trợ của AI.
+
+---
+
+### **Đầu vào (Input):**
+
+* Kho lưu trữ test case
+* Báo cáo thực thi kiểm thử
+* Hệ thống theo dõi lỗi (JIRA / GitHub Issues)
+* Kho mã nguồn
+
+---
+
+### **Xử lý (Processing):**
+
+Công cụ sẽ tính toán các chỉ số kiểm thử quan trọng như:
+
+#### **Chỉ số hiệu quả kiểm thử (Test Effectiveness Metrics):**
+
+* Tỷ lệ thực thi test case (Test Case Execution Rate)
+* Tỷ lệ Pass / Fail
+* Tỷ lệ phát hiện lỗi (Defect Detection Percentage - DDP)
+* Tỷ lệ lỗi bị lọt (Defect Leakage Rate)
+
+#### **Chỉ số độ bao phủ kiểm thử (Test Coverage Metrics):**
+
+* Độ bao phủ yêu cầu (Requirement Coverage)
+* Độ bao phủ mã nguồn (Code Coverage)
+* Độ bao phủ test case (Test Case Coverage)
+
+---
+
+### **Thành phần AI (AI Component):**
+
+AI phân tích dữ liệu kiểm thử lịch sử để:
+
+* phát hiện các khu vực kiểm thử chưa đầy đủ
+* dự đoán các module có khả năng bị lỗi khi test
+* đề xuất thêm test case
+
+---
+
+### **Đầu ra (Output):**
+
+Bảng điều khiển tương tác hiển thị:
+
+* hiệu quả kiểm thử
+* các chỉ số độ bao phủ
+* xu hướng phát hiện lỗi
+* các khu vực rủi ro trong hệ thống

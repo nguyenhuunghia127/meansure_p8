@@ -1,0 +1,36 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { DashboardOverviewDto } from './dto/dashboard-overview.dto';
+import { ChartsResponseDto, CoverageMetricsDto, DefectTrendsDto, EffectivenessMetricsDto, ModuleFilterDto, TimeRangeFilterDto } from './dto/metrics-response.dto';
+import { MetricsSummaryDto } from './dto/metrics-summary.dto';
+import { SystemService } from '../system/system.service';
+export declare class MetricsService {
+    private prisma;
+    private readonly systemService;
+    constructor(prisma: PrismaService, systemService: SystemService);
+    getSummary(): Promise<MetricsSummaryDto>;
+    getDashboardOverview(): Promise<DashboardOverviewDto>;
+    getEffectivenessMetrics(): Promise<EffectivenessMetricsDto>;
+    getCoverageMetrics(): Promise<CoverageMetricsDto>;
+    getDefectTrends(): Promise<DefectTrendsDto>;
+    calculateExecutionRate(overview: DashboardOverviewDto): number;
+    calculatePassFailRatio(overview: DashboardOverviewDto): string;
+    calculateDDP(overview: DashboardOverviewDto): number;
+    calculateDefectLeakage(overview: DashboardOverviewDto): number;
+    calculateRequirementCoverage(overview: DashboardOverviewDto): number;
+    calculateCodeCoverage(overview: DashboardOverviewDto): number;
+    calculateTestCaseCoverage(overview: DashboardOverviewDto): number;
+    filterByTimeRange(range: string): Promise<TimeRangeFilterDto>;
+    filterByModule(moduleName?: string): Promise<ModuleFilterDto>;
+    renderCharts(): Promise<ChartsResponseDto>;
+    private buildModuleHeuristic;
+    private extractAiSuggestions;
+    private getLatestByKey;
+    private groupBy;
+    private groupByCount;
+    private normalizeStatus;
+    private normalizeSource;
+    private toPercent;
+    private round;
+    private formatDateLabel;
+    private uniqueStrings;
+}

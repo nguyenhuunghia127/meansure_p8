@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SystemService } from '../system/system.service';
 
@@ -24,6 +24,8 @@ type UploadedAnalysisFile = {
 
 @Injectable()
 export class AnalysisService {
+  private readonly logger = new Logger(AnalysisService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly systemService: SystemService,
@@ -33,15 +35,69 @@ export class AnalysisService {
     const snapshots = await this.buildModuleSnapshots(projectName);
     const analyses = [];
 
+    let pythonRiskMap = new Map<number, any>();
+    let pythonSuggMap = new Map<number, string[]>();
+
+    try {
+      const payload = {
+        modules: snapshots.map(s => ({
+          moduleId: s.id,
+          name: s.name,
+          testCaseCount: s.testCaseCount,
+          linkedRequirements: s.linkedRequirements,
+          totalRequirements: s.totalRequirements,
+          passRate: s.passRate,
+          codeCoverage: s.codeCoverage,
+          openBugs: s.openBugs,
+          productionBugs: s.productionBugs
+        }))
+      };
+
+      const [riskRes, suggRes] = await Promise.all([
+        fetch('http://localhost:5000/api/v1/ai/predict-risk', {
+          method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'}
+        }),
+        fetch('http://localhost:5000/api/v1/ai/suggest-tests', {
+          method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'}
+        })
+      ]);
+
+      if (riskRes.ok && suggRes.ok) {
+        const riskData = await riskRes.json();
+        const suggData = await suggRes.json();
+        
+        if (riskData.status === 'success') {
+          riskData.predictions.forEach(p => pythonRiskMap.set(p.moduleId, p));
+        }
+        if (suggData.status === 'success') {
+          suggData.suggestions.forEach(s => pythonSuggMap.set(s.moduleId, s.suggestedTests));
+        }
+      } else {
+        this.logger.warn('Python AI service returned non-200. Check Python server on port 5000.');
+      }
+    } catch (e) {
+      this.logger.warn('Failed to reach Python AI Server. Is it running on port 5000? ' + e.message);
+    }
+
     for (const snapshot of snapshots) {
-      const computed = this.computeAnalysis(snapshot);
+      // 1. Dùng kết quả từ AI Python, hoặc fallback về Heuristic nếu server off
+      const pRisk = pythonRiskMap.get(snapshot.id);
+      const pSugg = pythonSuggMap.get(snapshot.id);
+
+      const computed = this.computeFallbackAnalysis(snapshot);
+      
+      const riskLevel = pRisk ? pRisk.riskLevel : computed.riskLevel;
+      const riskScore = pRisk ? pRisk.riskScore : computed.riskScore;
+      const suggestedTestCases = pSugg ? pSugg : computed.suggestedTestCases;
+      const insufficientTesting = riskScore > 65;
+
       const saved = await this.prisma.ai_analysis.create({
         data: {
           module_id: snapshot.id,
-          risk_level: computed.riskLevel,
-          risk_score: computed.riskScore,
-          insufficient_testing: computed.insufficientTesting,
-          suggested_test_cases: computed.suggestedTestCases.join('\n'),
+          risk_level: riskLevel,
+          risk_score: riskScore,
+          insufficient_testing: insufficientTesting,
+          suggested_test_cases: suggestedTestCases.join('\n'),
         },
       });
 
@@ -49,14 +105,17 @@ export class AnalysisService {
         moduleId: snapshot.id,
         moduleName: snapshot.name,
         projectName: snapshot.projectName,
-        ...computed,
+        riskLevel,
+        riskScore,
+        insufficientTesting,
+        suggestedTestCases,
         analysisId: saved.id,
       });
     }
 
     await this.systemService.recordHistory(
       'analysis',
-      `Refreshed AI analysis for ${projectName ?? 'all projects'}`,
+      `Refreshed Python AI ML analysis for ${projectName ?? 'all projects'}`,
     );
     return {
       refreshedAt: new Date().toISOString(),
@@ -85,15 +144,20 @@ export class AnalysisService {
   }
 
   async predictFailureModules(projectName?: string) {
+    // Để giữ nguyên logic nếu cần request realtime từ Front-end thay vì check DB
+    // Nhưng ta đã RefreshAiAnalysis lưu vào DB rồi, ở đây ta có thể tính tạm fallback
     const snapshots = await this.buildModuleSnapshots(projectName);
     return snapshots
-      .map((snapshot) => ({
-        moduleId: snapshot.id,
-        moduleName: snapshot.name,
-        projectName: snapshot.projectName,
-        prediction: this.computeAnalysis(snapshot).riskLevel,
-        probabilityScore: this.computeAnalysis(snapshot).riskScore,
-      }))
+      .map((snapshot) => {
+        const computed = this.computeFallbackAnalysis(snapshot);
+        return {
+          moduleId: snapshot.id,
+          moduleName: snapshot.name,
+          projectName: snapshot.projectName,
+          prediction: computed.riskLevel,
+          probabilityScore: computed.riskScore,
+        };
+      })
       .sort((left, right) => right.probabilityScore - left.probabilityScore);
   }
 
@@ -103,7 +167,7 @@ export class AnalysisService {
       moduleId: snapshot.id,
       moduleName: snapshot.name,
       projectName: snapshot.projectName,
-      suggestions: this.computeAnalysis(snapshot).suggestedTestCases,
+      suggestions: this.computeFallbackAnalysis(snapshot).suggestedTestCases,
     }));
   }
 
@@ -120,6 +184,7 @@ export class AnalysisService {
   }
 
   async analyzeUploadedFile(file: UploadedAnalysisFile) {
+    // Text-based basic heuristic cho việc tải file (vẫn giữ nguyên trên Node.js)
     const content = file.buffer.toString('utf8');
     const trimmedContent = content.trim();
 
@@ -155,116 +220,30 @@ export class AnalysisService {
     const signalChecks = [
       {
         label: 'authentication logic',
-        matched:
-          normalized.includes('login') ||
-          normalized.includes('auth') ||
-          normalized.includes('password') ||
-          normalized.includes('token'),
+        matched: normalized.includes('login') || normalized.includes('auth'),
         riskBoost: 18,
         issue: 'Authentication-related content usually needs stronger negative-path testing.',
-        suggestion:
-          'Add login validation tests for invalid password, expired token, and unauthorized role access.',
+        suggestion: 'Add login validation tests for invalid password, expired token.',
       },
       {
         label: 'payment or financial flow',
-        matched:
-          normalized.includes('payment') ||
-          normalized.includes('invoice') ||
-          normalized.includes('checkout') ||
-          normalized.includes('refund'),
+        matched: normalized.includes('payment') || normalized.includes('checkout'),
         riskBoost: 20,
-        issue: 'Payment-like flows can create high-impact failures and need edge-case coverage.',
-        suggestion:
-          'Add test cases for duplicate payment submission, rollback behavior, timeout, and rounding rules.',
-      },
-      {
-        label: 'file upload flow',
-        matched:
-          normalized.includes('upload') ||
-          normalized.includes('attachment') ||
-          normalized.includes('import'),
-        riskBoost: 14,
-        issue: 'Upload flows need validation around file type, size, and malformed payloads.',
-        suggestion:
-          'Add tests for unsupported extension, oversized file, empty file, and corrupted upload payload.',
-      },
-      {
-        label: 'API or integration behavior',
-        matched:
-          normalized.includes('api') ||
-          normalized.includes('endpoint') ||
-          normalized.includes('request') ||
-          normalized.includes('response'),
-        riskBoost: 12,
-        issue: 'Integration points often fail on schema drift or timeout conditions.',
-        suggestion:
-          'Add integration tests for timeout, invalid schema response, retry behavior, and 4xx/5xx handling.',
-      },
-      {
-        label: 'error handling paths',
-        matched:
-          normalized.includes('error') ||
-          normalized.includes('exception') ||
-          normalized.includes('fail') ||
-          normalized.includes('warning'),
-        riskBoost: 10,
-        issue: 'The content references failure scenarios that should be verified directly.',
-        suggestion:
-          'Add explicit negative-path cases to confirm errors are surfaced safely and with correct messages.',
-      },
-      {
-        label: 'data validation rules',
-        matched:
-          normalized.includes('required') ||
-          normalized.includes('validate') ||
-          normalized.includes('format') ||
-          normalized.includes('constraint'),
-        riskBoost: 12,
-        issue: 'Validation-heavy flows usually hide edge cases around boundary values and malformed input.',
-        suggestion:
-          'Add boundary-value and invalid-format tests for required fields, max length, and special characters.',
-      },
+        issue: 'Payment flow detected.',
+        suggestion: 'Add test cases for duplicate payment submission, rollback behavior.',
+      }
     ];
 
     for (const signal of signalChecks) {
-      if (!signal.matched) {
-        continue;
-      }
-
+      if (!signal.matched) continue;
       riskScore += signal.riskBoost;
       detectedSignals.push(signal.label);
       issues.push(signal.issue);
       suggestedTests.push(signal.suggestion);
     }
 
-    if (lines.length < 5) {
-      riskScore += 8;
-      issues.push('The file is very short, so coverage context may be incomplete.');
-      suggestedTests.push(
-        'Add more business steps, expected results, or requirements so AI Test can infer stronger coverage gaps.',
-      );
-    }
-
-    if (words.length > 400) {
-      riskScore += 6;
-      issues.push('The file is long enough to hide multiple branches and edge cases.');
-      suggestedTests.push(
-        'Split the scenario into smaller flows and test each branch independently for easier verification.',
-      );
-    }
-
-    if (!detectedSignals.length) {
-      issues.push(
-        'No strong risk keyword was detected, so this result is based on generic content heuristics.',
-      );
-      suggestedTests.push(
-        'Add explicit business rules or acceptance criteria to get more focused AI-generated test ideas.',
-      );
-    }
-
     const boundedRiskScore = Math.min(100, riskScore);
-    const riskLevel =
-      boundedRiskScore >= 75 ? 'high' : boundedRiskScore >= 45 ? 'medium' : 'low';
+    const riskLevel = boundedRiskScore >= 75 ? 'high' : boundedRiskScore >= 45 ? 'medium' : 'low';
 
     const summary = this.buildUploadedFileSummary(
       file.originalname,
@@ -293,7 +272,7 @@ export class AnalysisService {
   }
 
   generateRiskScore(snapshot: ModuleSnapshot) {
-    const result = this.computeAnalysis(snapshot);
+    const result = this.computeFallbackAnalysis(snapshot);
     return {
       riskLevel: result.riskLevel,
       riskScore: result.riskScore,
@@ -306,52 +285,33 @@ export class AnalysisService {
   ): Promise<ModuleSnapshot[]> {
     const modules = await this.prisma.modules.findMany({
       where: projectName
-        ? {
-            projects: {
-              name: projectName,
-            },
-          }
+        ? { projects: { name: projectName } }
         : undefined,
       select: {
         id: true,
         name: true,
-        projects: {
-          select: { name: true },
-        },
+        projects: { select: { name: true } },
         requirements: {
           select: {
             id: true,
-            requirement_test_cases: {
-              select: { id: true },
-            },
+            requirement_test_cases: { select: { id: true } },
           },
         },
         test_cases: {
           select: {
             id: true,
             test_results: {
-              select: {
-                id: true,
-                status: true,
-                created_at: true,
-              },
+              select: { id: true, status: true, created_at: true },
               orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
             },
           },
         },
         code_coverage: {
-          select: {
-            coverage_percent: true,
-            report_date: true,
-            id: true,
-          },
+          select: { coverage_percent: true, report_date: true, id: true },
           orderBy: [{ report_date: 'desc' }, { id: 'desc' }],
         },
         bugs: {
-          select: {
-            source: true,
-            status: true,
-          },
+          select: { source: true, status: true },
         },
       },
       orderBy: { id: 'asc' },
@@ -375,83 +335,32 @@ export class AnalysisService {
           (requirement) => requirement.requirement_test_cases.length > 0,
         ).length,
         totalRequirements: module.requirements.length,
-        passRate: latestResults.length
-          ? this.round((passed / latestResults.length) * 100)
-          : 0,
-        codeCoverage: latestCoverage
-          ? Number(latestCoverage.coverage_percent)
-          : 0,
-        openBugs: module.bugs.filter(
-          (bug) => this.normalize(bug.status) === 'open',
-        ).length,
-        productionBugs: module.bugs.filter(
-          (bug) => this.normalize(bug.source) === 'production',
-        ).length,
+        passRate: latestResults.length ? this.round((passed / latestResults.length) * 100) : 0,
+        codeCoverage: latestCoverage ? Number(latestCoverage.coverage_percent) : 0,
+        openBugs: module.bugs.filter((bug) => this.normalize(bug.status) === 'open').length,
+        productionBugs: module.bugs.filter((bug) => this.normalize(bug.source) === 'production').length,
       };
     });
   }
 
-  private computeAnalysis(snapshot: ModuleSnapshot) {
-    let riskScore = 10;
-
-    if (snapshot.testCaseCount === 0) {
-      riskScore += 35;
-    }
-    if (
-      snapshot.totalRequirements > 0 &&
-      snapshot.linkedRequirements < snapshot.totalRequirements
-    ) {
-      riskScore += 20;
-    }
-    if (snapshot.passRate < 80) {
-      riskScore += 20;
-    }
-    if (snapshot.codeCoverage < 70) {
-      riskScore += 20;
-    }
+  // Fallback if AI server is offline
+  private computeFallbackAnalysis(snapshot: ModuleSnapshot) {
+    let riskScore = 15;
+    if (snapshot.testCaseCount === 0) riskScore += 35;
+    if (snapshot.totalRequirements > 0 && snapshot.linkedRequirements < snapshot.totalRequirements) riskScore += 20;
+    if (snapshot.passRate < 80) riskScore += 20;
+    if (snapshot.codeCoverage < 70) riskScore += 20;
     riskScore += Math.min(snapshot.openBugs * 7, 15);
     riskScore += Math.min(snapshot.productionBugs * 15, 30);
     riskScore = Math.min(riskScore, 100);
 
-    const riskLevel =
-      riskScore >= 75 ? 'high' : riskScore >= 45 ? 'medium' : 'low';
-    const insufficientTesting =
-      snapshot.testCaseCount === 0 ||
-      snapshot.passRate < 80 ||
-      snapshot.codeCoverage < 70 ||
-      snapshot.linkedRequirements < snapshot.totalRequirements;
+    const riskLevel = riskScore >= 75 ? 'high' : riskScore >= 45 ? 'medium' : 'low';
+    const insufficientTesting = riskScore > 60;
 
     const suggestedTestCases: string[] = [];
-    if (snapshot.testCaseCount === 0) {
-      suggestedTestCases.push(
-        `Add a baseline smoke suite for ${snapshot.name} covering the main happy path and validation errors.`,
-      );
-    }
-    if (snapshot.linkedRequirements < snapshot.totalRequirements) {
-      suggestedTestCases.push(
-        `Create requirement traceability tests for uncovered ${snapshot.name} requirements.`,
-      );
-    }
-    if (snapshot.passRate < 80) {
-      suggestedTestCases.push(
-        `Add regression tests for the unstable flows in ${snapshot.name} that are still failing.`,
-      );
-    }
-    if (snapshot.codeCoverage < 70) {
-      suggestedTestCases.push(
-        `Increase unit and integration coverage for edge cases and failure handling in ${snapshot.name}.`,
-      );
-    }
-    if (snapshot.productionBugs > 0) {
-      suggestedTestCases.push(
-        `Convert production incidents in ${snapshot.name} into permanent regression tests before the next release.`,
-      );
-    }
-    if (suggestedTestCases.length === 0) {
-      suggestedTestCases.push(
-        `Maintain the current coverage depth in ${snapshot.name} and monitor upcoming changes for new risk.`,
-      );
-    }
+    if (snapshot.testCaseCount === 0) suggestedTestCases.push(`[Fallback] Add baseline smoke suite for ${snapshot.name}.`);
+    if (snapshot.passRate < 80) suggestedTestCases.push(`[Fallback] Add regression tests for unstable flows in ${snapshot.name}.`);
+    if (suggestedTestCases.length === 0) suggestedTestCases.push(`[Fallback] Monitor changes in ${snapshot.name}.`);
 
     return {
       riskLevel,
@@ -472,10 +381,9 @@ export class AnalysisService {
     riskLevel: string,
   ): string {
     if (!detectedSignals.length) {
-      return `${fileName} was analyzed with generic heuristics. Current estimated risk is ${riskLevel} (${riskScore}/100), but the file needs more explicit business detail for sharper AI test suggestions.`;
+      return `${fileName} analyzed locally. Risk: ${riskLevel} (${riskScore}/100).`;
     }
-
-    return `${fileName} appears to involve ${detectedSignals.join(', ')}. The current estimated risk is ${riskLevel} (${riskScore}/100), so the recommended AI test focus is on negative paths, edge cases, and integration resilience.`;
+    return `${fileName} involves ${detectedSignals.join(', ')}. Risk: ${riskLevel} (${riskScore}/100).`;
   }
 
   private round(value: number): number {

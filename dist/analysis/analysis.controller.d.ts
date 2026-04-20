@@ -8,14 +8,14 @@ export declare class AnalysisController {
         refreshedAt: string;
         totalModules: number;
         analyses: {
-            analysisId: number;
-            riskLevel: string;
-            riskScore: number;
-            insufficientTesting: boolean;
-            suggestedTestCases: string[];
             moduleId: number;
             moduleName: string;
             projectName: string;
+            riskLevel: any;
+            riskScore: any;
+            insufficientTesting: boolean;
+            suggestedTestCases: string[];
+            analysisId: number;
         }[];
     }>;
     analyzeUploadedFile(file?: {
