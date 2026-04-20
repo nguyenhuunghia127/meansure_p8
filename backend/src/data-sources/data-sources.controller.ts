@@ -6,13 +6,32 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DataSourcesService } from './data-sources.service';
+import { JiraService } from './jira.service';
+import { GithubService } from './github.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('data-sources')
 export class DataSourcesController {
-  constructor(private readonly dataSourcesService: DataSourcesService) {}
+  constructor(
+    private readonly dataSourcesService: DataSourcesService,
+    private readonly jiraService: JiraService,
+    private readonly githubService: GithubService
+  ) {}
+
+  @Post('jira/sync')
+  syncJira() {
+    return this.jiraService.fetchJiraBugs('PROJ'); // Default mock project key
+  }
+
+  @Post('github/actions/sync')
+  syncGithub() {
+    return this.githubService.fetchGithubActions('my-repo');
+  }
 
   @Get('templates')
   getTemplates() {

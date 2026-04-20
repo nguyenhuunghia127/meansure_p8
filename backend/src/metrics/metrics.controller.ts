@@ -13,10 +13,13 @@ import {
 } from './dto/metrics-response.dto';
 import { MetricsSummaryDto } from './dto/metrics-summary.dto';
 
+import { UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+@UseGuards(AuthGuard('jwt'))
 @Controller('metrics')
 export class MetricsController {
-  constructor(private readonly metricsService: MetricsService) {}
-
+  constructor(private readonly metricsService: MetricsService) { }
   @Get('summary')
   getSummary(): Promise<MetricsSummaryDto> {
     return this.metricsService.getSummary();

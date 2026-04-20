@@ -6,6 +6,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import threading
 import uvicorn
+from fastapi import Request
+import pandas as pd
+import joblib
 
 app = FastAPI(title="P8 Test Analytics AI Service")
 
@@ -28,44 +31,37 @@ model = RandomForestClassifier(n_estimators=100, random_state=42)
 scaler = StandardScaler()
 is_trained = False
 
-def train_initial_model():
+@app.post("/train")
+async def train_initial_model(request: Request):
     """
-    Train the RandomForest model on historical QA data.
-    In a true production environment, this data would be fetched globally from DB.
+    Train the RandomForest model using real DB data overriding old mock logic.
     """
-    global is_trained
-    np.random.seed(42)
-    n_samples = 1500
-    
-    # Features: testCaseCount, reqCoverage, passRate, codeCoverage, openBugs, prodBugs
-    X = pd.DataFrame({
-        'testCaseCount': np.random.randint(0, 150, n_samples),
-        'reqCoverage': np.random.uniform(0, 100, n_samples),
-        'passRate': np.random.uniform(10, 100, n_samples),
-        'codeCoverage': np.random.uniform(10, 100, n_samples),
-        'openBugs': np.random.randint(0, 25, n_samples),
-        'prodBugs': np.random.randint(0, 15, n_samples)
-    })
-    
-    # Heuristic probability representing actual historical failure risk
-    risk_prob = (
-        (100 - X['passRate']) * 0.35 + 
-        (100 - X['codeCoverage']) * 0.25 + 
-        (100 - X['reqCoverage']) * 0.15 + 
-        X['openBugs'] * 2.5 + 
-        X['prodBugs'] * 5.0
-    )
-    
-    # Classify as 1 (Prone to fail / High Risk) or 0 (Stable)
-    y = (risk_prob > 45).astype(int) 
+    global is_trained, model
+    try:
+        data = await request.json()
+        if not data or len(data) == 0:
+            return {"error": "Không có dữ liệu để train", "status": 400}
 
-    X_scaled = scaler.fit_transform(X)
-    model.fit(X_scaled, y)
-    is_trained = True
-    print("\n✅ AI Model successfully trained: RandomForestClassifier ready!")
+        df = pd.DataFrame(data)
+        features = ['reqCoverage', 'passRate', 'testingBugs', 'productionBugs']
+        
+        # Verify columns exist
+        for f in features:
+            if f not in df.columns:
+                df[f] = 0
 
-# Background Training
-threading.Thread(target=train_initial_model).start()
+        X = df[features]
+        y = df.get('riskLevel', pd.Series([0]*len(df)))
+
+        X_scaled = scaler.fit_transform(X)
+        model.fit(X_scaled, y)
+        is_trained = True
+        
+        joblib.dump(model, 'real_trained_model.pkl')
+        print("\n[OK] AI Model successfully trained from Real Data Pipeline!")
+        return {"message": f"Đã train mô hình thành công với {len(df)} dòng dữ liệu!", "status": 200}
+    except Exception as e:
+        return {"error": str(e), "status": 500}
 
 @app.post("/api/v1/ai/predict-risk")
 def predict_risk(req: ModulesRequest):
@@ -128,6 +124,9 @@ def suggest_tests(req: ModulesRequest):
         })
     
     return {"status": "success", "suggestions": suggestions}
-
 if __name__ == "__main__":
+    import os
+    if os.path.exists("real_trained_model.pkl"):
+        model = joblib.load("real_trained_model.pkl")
+        is_trained = True
     uvicorn.run(app, host="0.0.0.0", port=5000)

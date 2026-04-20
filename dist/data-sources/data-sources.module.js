@@ -8,18 +8,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DataSourcesModule = void 0;
 const common_1 = require("@nestjs/common");
+const axios_1 = require("@nestjs/axios");
 const system_module_1 = require("../system/system.module");
 const data_sources_controller_1 = require("./data-sources.controller");
 const data_sources_service_1 = require("./data-sources.service");
+const jira_service_1 = require("./jira.service");
+const github_service_1 = require("./github.service");
 let DataSourcesModule = class DataSourcesModule {
 };
 exports.DataSourcesModule = DataSourcesModule;
 exports.DataSourcesModule = DataSourcesModule = __decorate([
     (0, common_1.Module)({
-        imports: [system_module_1.SystemModule],
+        imports: [system_module_1.SystemModule, axios_1.HttpModule],
         controllers: [data_sources_controller_1.DataSourcesController],
-        providers: [data_sources_service_1.DataSourcesService],
-        exports: [data_sources_service_1.DataSourcesService],
+        providers: [data_sources_service_1.DataSourcesService, jira_service_1.JiraService, github_service_1.GithubService],
+        exports: [data_sources_service_1.DataSourcesService, jira_service_1.JiraService, github_service_1.GithubService],
     })
 ], DataSourcesModule);
 //# sourceMappingURL=data-sources.module.js.map

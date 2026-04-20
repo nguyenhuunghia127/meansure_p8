@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AiController = void 0;
 const common_1 = require("@nestjs/common");
+const passport_1 = require("@nestjs/passport");
 const analysis_service_1 = require("./analysis.service");
 let AiController = class AiController {
     analysisService;
@@ -43,6 +44,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AiController.prototype, "suggestTests", null);
 exports.AiController = AiController = __decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, common_1.Controller)('ai'),
     __metadata("design:paramtypes", [analysis_service_1.AnalysisService])
 ], AiController);

@@ -25,11 +25,13 @@ const currentPageTitle = document.getElementById('current-page-title');
 const roleSelector = document.getElementById('user-role');
 let currentActiveView = 'view-overview';
 let currentRole = 'admin'; // 'admin' or 'tester'
+let authToken = '';
 
 if(roleSelector) {
-  roleSelector.addEventListener('change', (e) => {
+  roleSelector.addEventListener('change', async (e) => {
     currentRole = e.target.value;
-    renderDashboard();
+    await loginAs(currentRole);
+    loadDashboard();
   });
 }
 
@@ -56,8 +58,26 @@ const setState = (kind, message) => {
   statusMsg.textContent = message;
 };
 
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
+async function loginAs(roleType) {
+  try {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: roleType })
+    });
+    const data = await res.json();
+    if (data.access_token) authToken = data.access_token;
+  } catch(e) {
+    console.error('Login failed:', e);
+  }
+}
+
+async function fetchJson(url, options = {}) {
+  const headers = { ...options.headers };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) throw new Error('Unauthorized - Please check Role Access');
   if (!response.ok) throw new Error('Request failed with status ' + response.status + ' for ' + url);
   return response.json();
 }
@@ -268,10 +288,11 @@ function renderDashboard() {
           <div id="report-preview" class="preview">Choose export to preview.</div>
         </article>
         <article class="box">
-          <h3>System Admin</h3>
+          <h3>System Admin & Plugins</h3>
           <div class="actions section-gap-small">
             <button id="system-users" class="alt">Manage Users</button>
-            <button id="system-history" class="alt">View Logs</button>
+            <button id="sync-jira" class="alt" style="background:#0284c7; color:white; border:none;">⟳ Sync JIRA Bugs</button>
+            <button id="retrain-ai" class="alt" style="background:#10b981; color:white; border:none;">🧠 Retrain AI (DB Data)</button>
           </div>
           <div id="system-preview" class="preview">System responses will appear here.</div>
         </article>
@@ -379,8 +400,13 @@ app.addEventListener('click', async (event) => {
   if (target.id === 'report-summary') await runPreview('/api/v1/reporting/summary', 'report-preview', 'json');
   if (target.id === 'report-pdf') await runPreview('/api/v1/reporting/pdf', 'report-preview', 'content');
   if (target.id === 'system-users') await runPreview('/api/v1/system/users', 'system-preview', 'json');
-  if (target.id === 'system-history') await runPreview('/api/v1/system/history', 'system-preview', 'json');
+  if (target.id === 'sync-jira') await runPreview('/api/v1/data-sources/jira/sync', 'system-preview', 'json', { method: 'POST' });
+  if (target.id === 'retrain-ai') await runPreview('/api/v1/analysis/retrain', 'system-preview', 'json', { method: 'POST' });
 });
 
 updateImportHints();
-loadDashboard();
+
+(async () => {
+  await loginAs(currentRole);
+  await loadDashboard();
+})();

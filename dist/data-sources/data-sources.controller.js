@@ -16,10 +16,23 @@ exports.DataSourcesController = void 0;
 const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
 const data_sources_service_1 = require("./data-sources.service");
+const jira_service_1 = require("./jira.service");
+const github_service_1 = require("./github.service");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let DataSourcesController = class DataSourcesController {
     dataSourcesService;
-    constructor(dataSourcesService) {
+    jiraService;
+    githubService;
+    constructor(dataSourcesService, jiraService, githubService) {
         this.dataSourcesService = dataSourcesService;
+        this.jiraService = jiraService;
+        this.githubService = githubService;
+    }
+    syncJira() {
+        return this.jiraService.fetchJiraBugs('PROJ');
+    }
+    syncGithub() {
+        return this.githubService.fetchGithubActions('my-repo');
     }
     getTemplates() {
         return this.dataSourcesService.getTemplates();
@@ -44,6 +57,18 @@ let DataSourcesController = class DataSourcesController {
     }
 };
 exports.DataSourcesController = DataSourcesController;
+__decorate([
+    (0, common_1.Post)('jira/sync'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], DataSourcesController.prototype, "syncJira", null);
+__decorate([
+    (0, common_1.Post)('github/actions/sync'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], DataSourcesController.prototype, "syncGithub", null);
 __decorate([
     (0, common_1.Get)('templates'),
     __metadata("design:type", Function),
@@ -88,7 +113,10 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], DataSourcesController.prototype, "importCodeRepository", null);
 exports.DataSourcesController = DataSourcesController = __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('data-sources'),
-    __metadata("design:paramtypes", [data_sources_service_1.DataSourcesService])
+    __metadata("design:paramtypes", [data_sources_service_1.DataSourcesService,
+        jira_service_1.JiraService,
+        github_service_1.GithubService])
 ], DataSourcesController);
 //# sourceMappingURL=data-sources.controller.js.map

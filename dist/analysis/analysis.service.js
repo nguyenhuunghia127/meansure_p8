@@ -53,10 +53,10 @@ let AnalysisService = AnalysisService_1 = class AnalysisService {
                 const riskData = await riskRes.json();
                 const suggData = await suggRes.json();
                 if (riskData.status === 'success') {
-                    riskData.predictions.forEach(p => pythonRiskMap.set(p.moduleId, p));
+                    riskData.predictions.forEach((p) => pythonRiskMap.set(p.moduleId, p));
                 }
                 if (suggData.status === 'success') {
-                    suggData.suggestions.forEach(s => pythonSuggMap.set(s.moduleId, s.suggestedTests));
+                    suggData.suggestions.forEach((s) => pythonSuggMap.set(s.moduleId, s.suggestedTests));
                 }
             }
             else {

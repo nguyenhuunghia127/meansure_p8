@@ -1,7 +1,22 @@
 import { DataSourcesService } from './data-sources.service';
+import { JiraService } from './jira.service';
+import { GithubService } from './github.service';
 export declare class DataSourcesController {
     private readonly dataSourcesService;
-    constructor(dataSourcesService: DataSourcesService);
+    private readonly jiraService;
+    private readonly githubService;
+    constructor(dataSourcesService: DataSourcesService, jiraService: JiraService, githubService: GithubService);
+    syncJira(): Promise<{
+        message: string;
+    }>;
+    syncGithub(): Promise<{
+        message: string;
+        actions: {
+            runId: string;
+            status: string;
+            conclusion: string;
+        }[];
+    }>;
     getTemplates(): {
         testCaseRepository: {
             endpoint: string;

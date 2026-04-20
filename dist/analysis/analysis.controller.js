@@ -14,13 +14,19 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AnalysisController = void 0;
 const common_1 = require("@nestjs/common");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const analysis_service_1 = require("./analysis.service");
-const common_2 = require("@nestjs/common");
+const retrain_service_1 = require("./retrain.service");
 const platform_express_1 = require("@nestjs/platform-express");
 let AnalysisController = class AnalysisController {
     analysisService;
-    constructor(analysisService) {
+    retrainService;
+    constructor(analysisService, retrainService) {
         this.analysisService = analysisService;
+        this.retrainService = retrainService;
+    }
+    triggerRetrain() {
+        return this.retrainService.triggerAiRetraining();
     }
     refresh(body) {
         return this.analysisService.refreshAiAnalysis(body?.projectName);
@@ -46,6 +52,12 @@ let AnalysisController = class AnalysisController {
 };
 exports.AnalysisController = AnalysisController;
 __decorate([
+    (0, common_1.Post)('retrain'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AnalysisController.prototype, "triggerRetrain", null);
+__decorate([
     (0, common_1.Post)('refresh'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -61,35 +73,37 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AnalysisController.prototype, "analyzeUploadedFile", null);
 __decorate([
-    (0, common_2.Get)('low-coverage'),
-    __param(0, (0, common_2.Query)('projectName')),
+    (0, common_1.Get)('low-coverage'),
+    __param(0, (0, common_1.Query)('projectName')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], AnalysisController.prototype, "detectLowCoverageAreas", null);
 __decorate([
-    (0, common_2.Get)('failure-predictions'),
-    __param(0, (0, common_2.Query)('projectName')),
+    (0, common_1.Get)('failure-predictions'),
+    __param(0, (0, common_1.Query)('projectName')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], AnalysisController.prototype, "predictFailureModules", null);
 __decorate([
-    (0, common_2.Get)('suggestions'),
-    __param(0, (0, common_2.Query)('projectName')),
+    (0, common_1.Get)('suggestions'),
+    __param(0, (0, common_1.Query)('projectName')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], AnalysisController.prototype, "suggestTestCases", null);
 __decorate([
-    (0, common_2.Get)('risk-areas'),
-    __param(0, (0, common_2.Query)('projectName')),
+    (0, common_1.Get)('risk-areas'),
+    __param(0, (0, common_1.Query)('projectName')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], AnalysisController.prototype, "identifyRiskAreas", null);
 exports.AnalysisController = AnalysisController = __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('analysis'),
-    __metadata("design:paramtypes", [analysis_service_1.AnalysisService])
+    __metadata("design:paramtypes", [analysis_service_1.AnalysisService,
+        retrain_service_1.RetrainingService])
 ], AnalysisController);
 //# sourceMappingURL=analysis.controller.js.map

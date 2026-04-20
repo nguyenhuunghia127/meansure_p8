@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { SystemModule } from './system/system.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { MetricsModule } from './metrics/metrics.module';
     DataSourcesModule,
     SystemModule,
     ReportingModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

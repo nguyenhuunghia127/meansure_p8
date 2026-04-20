@@ -2,17 +2,30 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Post,
   UploadedFile,
   UseInterceptors,
+  UseGuards,
+  Query
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AnalysisService } from './analysis.service';
-import { Get, Query } from '@nestjs/common';
+import { RetrainingService } from './retrain.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 
+@UseGuards(JwtAuthGuard)
 @Controller('analysis')
 export class AnalysisController {
-  constructor(private readonly analysisService: AnalysisService) {}
+  constructor(
+  private readonly analysisService: AnalysisService,
+  private readonly retrainService: RetrainingService
+  ) {}
+
+  @Post('retrain')
+  triggerRetrain() {
+    return this.retrainService.triggerAiRetraining();
+  }
 
   @Post('refresh')
   refresh(@Body() body?: { projectName?: string }) {

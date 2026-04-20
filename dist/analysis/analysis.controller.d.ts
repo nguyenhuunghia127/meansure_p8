@@ -1,7 +1,10 @@
 import { AnalysisService } from './analysis.service';
+import { RetrainingService } from './retrain.service';
 export declare class AnalysisController {
     private readonly analysisService;
-    constructor(analysisService: AnalysisService);
+    private readonly retrainService;
+    constructor(analysisService: AnalysisService, retrainService: RetrainingService);
+    triggerRetrain(): Promise<any>;
     refresh(body?: {
         projectName?: string;
     }): Promise<{
