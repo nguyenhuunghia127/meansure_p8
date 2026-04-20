@@ -22,7 +22,16 @@ const dataImportPreview = document.getElementById('data-import-preview');
 
 const navLinks = document.querySelectorAll('.nav-link');
 const currentPageTitle = document.getElementById('current-page-title');
+const roleSelector = document.getElementById('user-role');
 let currentActiveView = 'view-overview';
+let currentRole = 'admin'; // 'admin' or 'tester'
+
+if(roleSelector) {
+  roleSelector.addEventListener('change', (e) => {
+    currentRole = e.target.value;
+    renderDashboard();
+  });
+}
 
 const state = {
   overview: null,
@@ -204,9 +213,9 @@ function renderDashboard() {
       <div class="section-head">
         <div>
           <h2 style="font-size: 1.2rem; margin-bottom: 4px;">AI Prescriptive Analytics</h2>
-          <p class="muted">${esc(overview.aiInsights.overview)}</p>
+          <p class="muted">${esc(overview.aiInsights.overview)} <br><span style="color:#fcd34d;">(Role: ${currentRole.toUpperCase()})</span></p>
         </div>
-        <button id="refresh-ai-btn" class="alt" style="font-size:0.8rem; padding: 8px 12px;">Re-run AI Analysis Analysis</button>
+        ${currentRole === 'admin' ? '<button id="refresh-ai-btn" class="alt" style="font-size:0.8rem; padding: 8px 12px;">Re-run AI Analysis</button>' : ''}
       </div>
       <div class="risk">
         <article class="box">

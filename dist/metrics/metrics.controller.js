@@ -29,10 +29,16 @@ let MetricsController = class MetricsController {
     getEffectivenessMetrics() {
         return this.metricsService.getEffectivenessMetrics();
     }
+    getTestEffectivenessMetricsCompat() {
+        return this.metricsService.getEffectivenessMetrics();
+    }
     getCoverageMetrics() {
         return this.metricsService.getCoverageMetrics();
     }
     getDefectTrends() {
+        return this.metricsService.getDefectTrends();
+    }
+    getDefectsCompat() {
         return this.metricsService.getDefectTrends();
     }
     renderCharts() {
@@ -65,6 +71,12 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MetricsController.prototype, "getEffectivenessMetrics", null);
 __decorate([
+    (0, common_1.Get)('test-effectiveness'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "getTestEffectivenessMetricsCompat", null);
+__decorate([
     (0, common_1.Get)('coverage'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
@@ -76,6 +88,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], MetricsController.prototype, "getDefectTrends", null);
+__decorate([
+    (0, common_1.Get)('defects'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "getDefectsCompat", null);
 __decorate([
     (0, common_1.Get)('charts'),
     __metadata("design:type", Function),

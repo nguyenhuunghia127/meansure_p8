@@ -10,6 +10,7 @@ exports.AnalysisModule = void 0;
 const common_1 = require("@nestjs/common");
 const system_module_1 = require("../system/system.module");
 const analysis_controller_1 = require("./analysis.controller");
+const ai_controller_1 = require("./ai.controller");
 const analysis_service_1 = require("./analysis.service");
 let AnalysisModule = class AnalysisModule {
 };
@@ -17,7 +18,7 @@ exports.AnalysisModule = AnalysisModule;
 exports.AnalysisModule = AnalysisModule = __decorate([
     (0, common_1.Module)({
         imports: [system_module_1.SystemModule],
-        controllers: [analysis_controller_1.AnalysisController],
+        controllers: [analysis_controller_1.AnalysisController, ai_controller_1.AiController],
         providers: [analysis_service_1.AnalysisService],
         exports: [analysis_service_1.AnalysisService],
     })

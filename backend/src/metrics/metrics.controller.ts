@@ -32,6 +32,11 @@ export class MetricsController {
     return this.metricsService.getEffectivenessMetrics();
   }
 
+  @Get('test-effectiveness')
+  getTestEffectivenessMetricsCompat(): Promise<EffectivenessMetricsDto> {
+    return this.metricsService.getEffectivenessMetrics();
+  }
+
   @Get('coverage')
   getCoverageMetrics(): Promise<CoverageMetricsDto> {
     return this.metricsService.getCoverageMetrics();
@@ -39,6 +44,11 @@ export class MetricsController {
 
   @Get('defect-trends')
   getDefectTrends(): Promise<DefectTrendsDto> {
+    return this.metricsService.getDefectTrends();
+  }
+
+  @Get('defects')
+  getDefectsCompat(): Promise<DefectTrendsDto> {
     return this.metricsService.getDefectTrends();
   }
 

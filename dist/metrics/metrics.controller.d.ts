@@ -8,8 +8,10 @@ export declare class MetricsController {
     getSummary(): Promise<MetricsSummaryDto>;
     getDashboardOverview(): Promise<DashboardOverviewDto>;
     getEffectivenessMetrics(): Promise<EffectivenessMetricsDto>;
+    getTestEffectivenessMetricsCompat(): Promise<EffectivenessMetricsDto>;
     getCoverageMetrics(): Promise<CoverageMetricsDto>;
     getDefectTrends(): Promise<DefectTrendsDto>;
+    getDefectsCompat(): Promise<DefectTrendsDto>;
     renderCharts(): Promise<ChartsResponseDto>;
     filterByTimeRange(range?: string): Promise<TimeRangeFilterDto>;
     filterByModule(moduleName?: string): Promise<ModuleFilterDto>;
