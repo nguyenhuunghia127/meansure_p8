@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Post,
+  Param,
   UploadedFile,
   UseInterceptors,
   UseGuards,
@@ -25,7 +26,12 @@ export class DataSourcesController {
 
   @Post('jira/sync')
   syncJira() {
-    return this.jiraService.fetchJiraBugs('PROJ'); // Default mock project key
+    return this.jiraService.fetchJiraBugs('PROJ');
+  }
+
+  @Post('jira/sync/:projectKey')
+  syncJiraWithParams(@Param('projectKey') projectKey: string) {
+    return this.jiraService.fetchJiraBugs(projectKey);
   }
 
   @Post('github/actions/sync')

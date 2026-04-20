@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const axios_1 = require("@nestjs/axios");
 const system_module_1 = require("../system/system.module");
 const data_sources_controller_1 = require("./data-sources.controller");
+const data_alias_controller_1 = require("./data-alias.controller");
 const data_sources_service_1 = require("./data-sources.service");
 const jira_service_1 = require("./jira.service");
 const github_service_1 = require("./github.service");
@@ -20,7 +21,7 @@ exports.DataSourcesModule = DataSourcesModule;
 exports.DataSourcesModule = DataSourcesModule = __decorate([
     (0, common_1.Module)({
         imports: [system_module_1.SystemModule, axios_1.HttpModule],
-        controllers: [data_sources_controller_1.DataSourcesController],
+        controllers: [data_sources_controller_1.DataSourcesController, data_alias_controller_1.DataAliasController],
         providers: [data_sources_service_1.DataSourcesService, jira_service_1.JiraService, github_service_1.GithubService],
         exports: [data_sources_service_1.DataSourcesService, jira_service_1.JiraService, github_service_1.GithubService],
     })

@@ -31,6 +31,9 @@ let DataSourcesController = class DataSourcesController {
     syncJira() {
         return this.jiraService.fetchJiraBugs('PROJ');
     }
+    syncJiraWithParams(projectKey) {
+        return this.jiraService.fetchJiraBugs(projectKey);
+    }
     syncGithub() {
         return this.githubService.fetchGithubActions('my-repo');
     }
@@ -63,6 +66,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], DataSourcesController.prototype, "syncJira", null);
+__decorate([
+    (0, common_1.Post)('jira/sync/:projectKey'),
+    __param(0, (0, common_1.Param)('projectKey')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], DataSourcesController.prototype, "syncJiraWithParams", null);
 __decorate([
     (0, common_1.Post)('github/actions/sync'),
     __metadata("design:type", Function),

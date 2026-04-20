@@ -12,17 +12,22 @@ import {
   TimeRangeFilterDto,
 } from './dto/metrics-response.dto';
 import { MetricsSummaryDto } from './dto/metrics-summary.dto';
-
 import { UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 
-@UseGuards(AuthGuard('jwt'))
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@UseGuards(JwtAuthGuard)
 @Controller('metrics')
 export class MetricsController {
   constructor(private readonly metricsService: MetricsService) { }
   @Get('summary')
   getSummary(): Promise<MetricsSummaryDto> {
     return this.metricsService.getSummary();
+  }
+
+  @Get('dashboard')
+  getDashboardCompat(): Promise<DashboardOverviewDto> {
+    return this.metricsService.getDashboardOverview();
   }
 
   @Get('overview')

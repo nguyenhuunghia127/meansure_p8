@@ -9,6 +9,9 @@ export declare class DataSourcesController {
     syncJira(): Promise<{
         message: string;
     }>;
+    syncJiraWithParams(projectKey: string): Promise<{
+        message: string;
+    }>;
     syncGithub(): Promise<{
         message: string;
         actions: {

@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const axios_1 = require("@nestjs/axios");
 const system_module_1 = require("../system/system.module");
 const analysis_controller_1 = require("./analysis.controller");
+const analysis_alias_controller_1 = require("./analysis-alias.controller");
 const ai_controller_1 = require("./ai.controller");
 const analysis_service_1 = require("./analysis.service");
 const retrain_service_1 = require("./retrain.service");
@@ -20,7 +21,7 @@ exports.AnalysisModule = AnalysisModule;
 exports.AnalysisModule = AnalysisModule = __decorate([
     (0, common_1.Module)({
         imports: [system_module_1.SystemModule, axios_1.HttpModule],
-        controllers: [analysis_controller_1.AnalysisController, ai_controller_1.AiController],
+        controllers: [analysis_controller_1.AnalysisController, analysis_alias_controller_1.AnalysisAliasController, ai_controller_1.AiController],
         providers: [analysis_service_1.AnalysisService, retrain_service_1.RetrainingService],
         exports: [analysis_service_1.AnalysisService, retrain_service_1.RetrainingService],
     })

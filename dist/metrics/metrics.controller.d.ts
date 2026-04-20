@@ -6,6 +6,7 @@ export declare class MetricsController {
     private readonly metricsService;
     constructor(metricsService: MetricsService);
     getSummary(): Promise<MetricsSummaryDto>;
+    getDashboardCompat(): Promise<DashboardOverviewDto>;
     getDashboardOverview(): Promise<DashboardOverviewDto>;
     getEffectivenessMetrics(): Promise<EffectivenessMetricsDto>;
     getTestEffectivenessMetricsCompat(): Promise<EffectivenessMetricsDto>;

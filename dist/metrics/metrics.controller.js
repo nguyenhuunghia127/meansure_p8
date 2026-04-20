@@ -16,7 +16,7 @@ exports.MetricsController = void 0;
 const common_1 = require("@nestjs/common");
 const metrics_service_1 = require("./metrics.service");
 const common_2 = require("@nestjs/common");
-const passport_1 = require("@nestjs/passport");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let MetricsController = class MetricsController {
     metricsService;
     constructor(metricsService) {
@@ -24,6 +24,9 @@ let MetricsController = class MetricsController {
     }
     getSummary() {
         return this.metricsService.getSummary();
+    }
+    getDashboardCompat() {
+        return this.metricsService.getDashboardOverview();
     }
     getDashboardOverview() {
         return this.metricsService.getDashboardOverview();
@@ -60,6 +63,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], MetricsController.prototype, "getSummary", null);
+__decorate([
+    (0, common_1.Get)('dashboard'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], MetricsController.prototype, "getDashboardCompat", null);
 __decorate([
     (0, common_1.Get)('overview'),
     __metadata("design:type", Function),
@@ -117,7 +126,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], MetricsController.prototype, "filterByModule", null);
 exports.MetricsController = MetricsController = __decorate([
-    (0, common_2.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, common_2.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('metrics'),
     __metadata("design:paramtypes", [metrics_service_1.MetricsService])
 ], MetricsController);
